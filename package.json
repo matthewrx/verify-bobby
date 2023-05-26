@@ -1,0 +1,19 @@
+{
+  "name": "verify_the_bobby",
+  "version": "1.0.0",
+  "description": "verifies bobs in a wallet",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "datboimatt#0001",
+  "license": "ISC",
+  "dependencies": {
+    "@solana/spl-token": "^0.3.7",
+    "@solana/web3.js": "^1.77.1",
+    "axios": "^1.4.0",
+    "prompt-sync": "^4.2.0"
+  },
+  "type": "module"
+}
