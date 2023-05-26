@@ -5,15 +5,23 @@ import {
   bobShirtEditions,
   bobBackgroundEditions,
   datbois_hash,
-} from "./bobhash.js";
-import { config } from "./config/config.js";
+} from "../hashlists/bobhash.js";
+import {
+  userBobResponse,
+  user_bobBois_type,
+  heliusNFT_response,
+  configType,
+} from "./types.js";
+import { config } from '../config/config.js';
 import axios from "axios";
 
-// prompt asking for wallet address at program start
-const prompt = PromptSync();
+const configFile: configType = config;
 
-// check if the entered wallet address is a valid solana wallet
-function isValidPubkey(userWallet) {
+const hard_wallet = '522GVifs4XRZ7Gpnfu6s9gHWD1NQuwMVUkAEt52bPdBo'
+
+const prompt = PromptSync({});
+
+function isValidPubkey(userWallet: string) {
   try {
     let pubkey = new web3.PublicKey(userWallet);
     let data = web3.PublicKey.isOnCurve(pubkey);
@@ -23,22 +31,18 @@ function isValidPubkey(userWallet) {
   }
 }
 
-// taking in our array of mints and grabbing metadata
-async function getMetaData(mints) {
-  const { data } = await axios.post(
-    `https://api.helius.xyz/v0/token-metadata?api-key=${config.HELIUS_API_KEY}`,
-    {
-      mintAccounts: mints,
-      includeOffChain: true,
-      disableCache: false,
-    }
-  );
+async function getMetaData(mints: string[]) {
+  const { data } = await axios.post<heliusNFT_response[]>(`https://api.helius.xyz/v0/token-metadata?api-key=${configFile.HELIUS_API_KEY}`, {
+    mintAccounts: mints,
+    includeOffChain: true,
+    disableCache: false,
+  });
   return data;
 }
 
-function checkHash(hashlistArray, token_mints) {
-  let response = [];
-  for (let i = 0; i < token_mints.length; i++) {
+function checkHash(hashlistArray: string[], token_mints: string[]) {
+  let response: string[] = [];
+  for (let i = 0; i < token_mints.length; i++){
     if (hashlistArray.includes(token_mints[i])) {
       response.push(token_mints[i]);
     }
@@ -46,9 +50,9 @@ function checkHash(hashlistArray, token_mints) {
   return response;
 }
 
-async function fetchUserBobs(connection, walletAddress) {
-  let user_token_accounts = [];
-  let userBobs = {
+async function fetchUserBobs(connection: web3.Connection, walletAddress: web3.PublicKey) {
+  let user_token_accounts: string[] = [];
+  let userBobs: userBobResponse = {
     user_bobBackgrounds: [],
     user_bobShirts: [],
     user_bobBois: [],
@@ -63,9 +67,9 @@ async function fetchUserBobs(connection, walletAddress) {
       }
     );
     for (let i = 0; i < userTokenAccounts.value.length; i++) {
-      const token_mint =
+      const token_mint: string =
         userTokenAccounts.value[i].account.data.parsed.info.mint;
-      const token_amount =
+      const token_amount: number =
         userTokenAccounts.value[i].account.data.parsed.info.tokenAmount
           .uiAmount;
       if (token_amount == 1) {
@@ -73,25 +77,28 @@ async function fetchUserBobs(connection, walletAddress) {
       }
     }
     if (user_token_accounts.length > 0) {
-      userBobs.user_bobBackgrounds = checkHash(
-        bobBackgroundEditions,
-        user_token_accounts
-      );
-      userBobs.user_bobShirts = checkHash(
-        bobShirtEditions,
-        user_token_accounts
-      );
+      userBobs.user_bobBackgrounds = checkHash(bobBackgroundEditions, user_token_accounts);
+      userBobs.user_bobShirts = checkHash(bobShirtEditions, user_token_accounts);
       userBobs.user_datbois = checkHash(datbois_hash, user_token_accounts);
     }
-    if (userBobs.user_datbois.length > 0) {
+
+    if (userBobs.user_datbois.length > 0){
       await getMetaData(userBobs.user_datbois).then((val) => {
         for (let w = 0; w < val.length; w++) {
           let nftMint = val[w].account;
           let nftAttributes = val[w].offChainMetadata.metadata.attributes;
           for (let j = 0; j < nftAttributes.length; j++) {
+            let attributeType = nftAttributes[j].traitType;
             let attributeValue = nftAttributes[j].value;
-            if (config.ATTRIBUTE_VALUE_FILTER.includes(attributeValue)) {
-              userBobs.user_bobBois.push(nftMint);
+            if (configFile.ATTRIBUTE_VALUE_FILTER.includes(attributeValue)) {
+              let bobBoi_obj: user_bobBois_type = {
+                mint: nftMint,
+                filter: {
+                  trait_type: attributeType,
+                  trait_value: attributeValue
+                }
+              }
+              userBobs.user_bobBois.push(bobBoi_obj);
             }
           }
         }
@@ -111,22 +118,26 @@ async function fetchUserBobs(connection, walletAddress) {
 }
 
 async function main() {
-  if (config.HELIUS_API_KEY != "" && config.ATTRIBUTE_VALUE_FILTER.length > 0) {
+  if (configFile.HELIUS_API_KEY != "" && configFile.ATTRIBUTE_VALUE_FILTER.length > 0) {
     const connection = new web3.Connection(
-      config.RPC_ENDPOINT
-        ? config.RPC_ENDPOINT
+      configFile.RPC_ENDPOINT
+        ? configFile.RPC_ENDPOINT
         : "https://api.mainnet-beta.solana.com"
     );
-    let walletAddress = prompt("Enter wallet address: ");
+    let walletAddress = "";
+    const enterWallet: string = prompt("Enter wallet address: ");
+    if (enterWallet == "") {
+      walletAddress = hard_wallet;
+    } else {
+      walletAddress = enterWallet
+    }
     let checkAddressValid = isValidPubkey(walletAddress);
     console.log("address is valid?:", checkAddressValid);
     if (checkAddressValid) {
-      console.log("searching wallet for bobby...");
-      await fetchUserBobs(connection, new web3.PublicKey(walletAddress)).then(
-        (val) => {
-          console.log(val);
-        }
-      );
+      console.log(`searching wallet: ${walletAddress} for bobby.. brb`);
+      await fetchUserBobs(connection, new web3.PublicKey(walletAddress)).then((val) => {
+        console.log(JSON.stringify(val, null, 4));
+      });
     } else {
       console.log("Invalid wallet address");
     }

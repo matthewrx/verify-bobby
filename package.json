@@ -1,10 +1,11 @@
 {
   "name": "verify_the_bobby",
   "version": "1.0.0",
-  "description": "verifies bobs in a wallet",
+  "description": "returns a list of nfts belonging to a wallet address via filters and hashlist files",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
+    "bobv2": "npx tsx bob.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "datboimatt#0001",
@@ -15,5 +16,12 @@
     "axios": "^1.4.0",
     "prompt-sync": "^4.2.0"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "tsx": "^3.12.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/matthewrx/verify-bobby.git"
+  }
 }
